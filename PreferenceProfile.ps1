@@ -160,5 +160,26 @@ else {
 }
 
 
+# - 7  Install favorites powershell modules 
+
+$modulesToInstall = @(
+    "Terminal-Icons"
+    "PSReadLine -AllowPrerelease"
+    "z -RequiredVersion 1.1.13"
+)
+
+foreach ($module in $modulesToInstall) {
+    try {
+        if (-NOT (Get-Module -ListAvailable -Name $module)) {
+            Install-Module -Name $module
+            Write-Output "$module installed successfully."
+        } else {
+            Write-Output "$module is already installed."
+        }
+    } catch {
+        Write-Output "Error on installing $module : $_"
+    }
+}
+
 
 Write-Output "Scrit done."

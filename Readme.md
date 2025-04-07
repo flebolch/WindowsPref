@@ -18,4 +18,5 @@ Set-ExecutionPolicy -Scope CurrentUser Unrestricted
 - 4  Remove useless Windows packages
 - 5  Install Chocolatey 
 - 6  Powershell preferences
+- 7  Install favorites powershell modules 
 
