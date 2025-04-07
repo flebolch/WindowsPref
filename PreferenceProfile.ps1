@@ -93,18 +93,71 @@ $appsToRemove = @(
     "skype"
 )
 
+foreach ($app in $appsToRemove) {
+    try {
+        Get-AppxPackage -AllUsers | Where-Object { $_.Name -like "*$app*" } | Remove-AppxPackage -ErrorAction Stop
+        if ($?) {
+            Write-Output "$app removed successfully."
+        } else {
+            Write-Output "Failed to remove $app."
+        }
+    } catch {
+        Write-Output "Error on removing $app : $_"
+    }
+}
+
+# 5  Install Chocolatey 
+
 try {
-Get-AppxPackage -AllUsers     | Where-Object { $_.Name -notlike "*Microsoft*" } | Remove-AppxPackage -ErrorAction Stop
-    if ($?) {
-        Write-Output "Useless Windows packages removed successfully."
+    if (-NOT (Get-Command choco -ErrorAction SilentlyContinue)) {
+        Set-ExecutionPolicy Bypass -Scope Process -Force
+        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
+        $chocoInstallScript = "https://chocolatey.org/install.ps1"
+        Invoke-Expression ((New-Object System.Net.WebClient).DownloadString($chocoInstallScript))
+        Write-Output "Chocolatey installed successfully."
     } else {
-        Write-Output "Failed to remove useless Windows packages."
+        Write-Output "Chocolatey is already installed."
     }
 } catch {
-    Write-Output "Error on removing useless Windows packages : $_"
+    Write-Output "Error on installing Chocolatey : $_"
 }
 
 
+# 6 - Profile creation or update
+if (!(Test-Path -Path $PROFILE -PathType Leaf)) {
+    try {
+        # Detect Version of PowerShell & Create Profile directories if they do not exist.
+        $profilePath = ""
+        if ($PSVersionTable.PSEdition -eq "Core") {
+            $profilePath = "$env:userprofile\Documents\Powershell"
+        }
+        elseif ($PSVersionTable.PSEdition -eq "Desktop") {
+            $profilePath = "$env:userprofile\Documents\WindowsPowerShell"
+        }
+
+        if (!(Test-Path -Path $profilePath)) {
+            New-Item -Path $profilePath -ItemType "directory"
+        }
+
+        Invoke-RestMethod https://github.com/flebolch/WindowsPref/blob/main/PreferenceProfile.ps1 -OutFile $PROFILE
+        Write-Host "The profile @ [$PROFILE] has been created."
+        Write-Host "If you want to make any personal changes or customizations, please do so at [$profilePath\Profile.ps1] as there is an updater in the installed profile which uses the hash to update the profile and will lead to loss of changes"
+    }
+    catch {
+        Write-Error "Failed to create or update the profile. Error: $_"
+    }
+}
+else {
+    try {
+        Get-Item -Path $PROFILE | Move-Item -Destination "oldprofile.ps1" -Force
+        Invoke-RestMethod https://github.com/flebolch/WindowsPref/blob/main/PreferenceProfile.ps1 -OutFile $PROFILE
+        Write-Host "The profile @ [$PROFILE] has been created and old profile removed."
+        Write-Host "Please back up any persistent components of your old profile to [$HOME\Documents\PowerShell\Profile.ps1] as there is an updater in the installed profile which uses the hash to update the profile and will lead to loss of changes"
+    }
+    catch {
+        Write-Error "Failed to backup and update the profile. Error: $_"
+    }
+}
 
 
 
