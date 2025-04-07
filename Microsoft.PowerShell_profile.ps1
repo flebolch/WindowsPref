@@ -1,9 +1,6 @@
 ﻿# Set the encoding to UTF-8 for the console output
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
-# Set the folder path
-$Env:HOME = "E:\Users\Francois.LT-Taur"
-$Env:DATA = "D:\"
 
 # Import Terminal-Icons module
 Import-Module Terminal-Icons

@@ -88,7 +88,6 @@ $appsToRemove = @(
     "qq"
     "Connect"
     "maps"
-    "people"
     "phone"
     "skype"
 )
@@ -124,6 +123,9 @@ try {
 
 
 # 6 - Profile creation or update
+
+$profilelnk = "https://raw.githubusercontent.com/flebolch/WindowsPref/refs/heads/main/Microsoft.PowerShell_profile.ps1"
+
 if (!(Test-Path -Path $PROFILE -PathType Leaf)) {
     try {
         # Detect Version of PowerShell & Create Profile directories if they do not exist.
@@ -139,9 +141,10 @@ if (!(Test-Path -Path $PROFILE -PathType Leaf)) {
             New-Item -Path $profilePath -ItemType "directory"
         }
 
-        Invoke-RestMethod https://github.com/flebolch/WindowsPref/blob/main/PreferenceProfile.ps1 -OutFile $PROFILE
+        Invoke-RestMethod $profilelnk -OutFile $PROFILE
         Write-Host "The profile @ [$PROFILE] has been created."
         Write-Host "If you want to make any personal changes or customizations, please do so at [$profilePath\Profile.ps1] as there is an updater in the installed profile which uses the hash to update the profile and will lead to loss of changes"
+        .$profile
     }
     catch {
         Write-Error "Failed to create or update the profile. Error: $_"
@@ -150,7 +153,7 @@ if (!(Test-Path -Path $PROFILE -PathType Leaf)) {
 else {
     try {
         Get-Item -Path $PROFILE | Move-Item -Destination "oldprofile.ps1" -Force
-        Invoke-RestMethod https://github.com/flebolch/WindowsPref/blob/main/PreferenceProfile.ps1 -OutFile $PROFILE
+        Invoke-RestMethod $profilelnk -OutFile $PROFILE
         Write-Host "The profile @ [$PROFILE] has been created and old profile removed."
         Write-Host "Please back up any persistent components of your old profile to [$HOME\Documents\PowerShell\Profile.ps1] as there is an updater in the installed profile which uses the hash to update the profile and will lead to loss of changes"
     }
@@ -163,7 +166,7 @@ else {
 # - 7  Install favorites powershell modules 
 
 $modulesToInstall = @(
-    "Terminal-Icons"
+    "Terminal-Icons -RequiredVersion 0.9.0"
     "PSReadLine -AllowPrerelease"
     "z -RequiredVersion 1.1.13"
 )

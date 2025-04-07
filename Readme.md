@@ -7,6 +7,8 @@ Dont forget to change users script restriction policy :
 
 
 ```bash 
+
+Invoke-WebRequest https://raw.githubusercontent.com/flebolch/WindowsPref/refs/heads/main/Microsoft.PowerShell_profile.ps1 -OutFile PreferenceProfile.ps1
 Set-ExecutionPolicy -Scope CurrentUser Unrestricted
 ```
 
