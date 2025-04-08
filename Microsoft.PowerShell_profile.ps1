@@ -1,7 +1,10 @@
 ﻿# Set the encoding to UTF-8 for the console output
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
-
+# Set the folder path
+$Env:HOME = "E:\Users\Francois.LT-Taur"
+$Env:DATA = "D:\"
+$GitBranch = ""
 # Import Terminal-Icons module
 Import-Module Terminal-Icons
 
@@ -10,6 +13,27 @@ function Test-Admin {
     $identity = [System.Security.Principal.WindowsIdentity]::GetCurrent()
     $principal = New-Object System.Security.Principal.WindowsPrincipal($identity)
     return $principal.IsInRole([System.Security.Principal.WindowsBuiltInRole]::Administrator)
+}
+
+#Is a git repository if .git folder exists retune true or false
+function IsGitRepository {
+    param (
+        [string]$path = $(Get-Location)
+    )
+    return Test-Path "$path\.git"
+}
+
+#function get git branch name if exists
+function Get-GitBranchName {
+    param (
+        [string]$path = $(Get-Location)
+    )
+    if (IsGitRepository) {
+        $gitBranch = & git -C $path rev-parse --abbrev-ref HEAD 2>$null
+        return $gitBranch
+    } else {
+        return $null
+    }
 }
 
 function cd {
@@ -39,13 +63,20 @@ function prompt {
     $currentDirectory = $(Get-Location)
     $UncRoot = $currentDirectory.Drive.DisplayRoot
 
-    write-host "📅 $dateTime" -NoNewline -ForegroundColor blue
+    write-host "📅 $dateTime" -NoNewline -ForegroundColor DarkGray 
+    if (IsGitRepository) {
+        $GitBranch = Get-GitBranchName
+        write-host " 📁 git branch: *" -NoNewline -ForegroundColor White
+        write-host $GitBranch -NoNewline -ForegroundColor Green
+    } else {
+        write-host "$UncRoot" -NoNewline -ForegroundColor Yellow
+    }
     write-host " $UncRoot"
     # Convert-Path needed for pure UNC-locations
     if (Test-Admin) {
-        write-host "#👾 ▶ $(Convert-Path $currentDirectory)`n" -nonewline -ForegroundColor White
+        write-host "#👾 ▶ $(Convert-Path $currentDirectory)`n" -nonewline -ForegroundColor Gray
     } else {
-        write-host "👽 ▶ $(Convert-Path $currentDirectory)`n" -nonewline -ForegroundColor White
+        write-host "👽 ▶ $(Convert-Path $currentDirectory)`n" -nonewline -ForegroundColor Gray
     }
     Write-Host "↪" -nonewline -ForegroundColor white
     return " "

@@ -185,4 +185,4 @@ foreach ($module in $modulesToInstall) {
 }
 
 
-Write-Output "Scrit done."
+Write-Output "Script done."
