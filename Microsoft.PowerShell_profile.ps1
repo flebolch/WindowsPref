@@ -57,16 +57,47 @@ function cd {
 
 $host.ui.rawui.WindowTitle = "${Env:username}@${Env:computername}"
 
+
+#Higlight name of current directory in the prompt
+function pathPrompt {
+    # Get current location
+    $currentDirectory = (Get-Location).Path
+
+    # Use regex to extract parts of the path
+    $regex = "^([A-Z]):\\(.*\\)?([^\\]+)$"
+    $match = [regex]::Match($currentDirectory, $regex)
+
+    if ($match.Success) {
+        $driveLetter = $match.Groups[1].Value
+        $directoryPath = $match.Groups[2].Value
+        $folderName = $match.Groups[3].Value
+
+        # Print with colors
+        Write-Host "| 💾 $driveLetter " -ForegroundColor DarkBlue -NoNewline
+        # Write-Host "$directoryPath" -ForegroundColor DarkGreen -NoNewline
+        Write-Host "→ $folderName" -ForegroundColor DarkBlue -NoNewline
+    } else {
+        # If regex fails (e.g., root of drive), fallback formatting
+        Write-Host "$currentDirectory" -ForegroundColor Cyan
+    }
+}
+
+
+# Get the current date and time
+$dateTime = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+
 # Custom prompt function
 function prompt {
-    $dateTime = get-date -Format "dd.MM.yy HH:mm:ss"
+    
+
     $currentDirectory = $(Get-Location)
     $UncRoot = $currentDirectory.Drive.DisplayRoot
 
-    write-host "📅 $dateTime" -NoNewline -ForegroundColor DarkGray 
+    write-host "📅 $dateTime " -NoNewline -ForegroundColor DarkGray
+    pathPrompt -NoNewline
     if (IsGitRepository) {
         $GitBranch = Get-GitBranchName
-        write-host " 📁 git branch: *" -NoNewline -ForegroundColor White
+        write-host "| 📁 git branch: *" -NoNewline -ForegroundColor White
         write-host $GitBranch -NoNewline -ForegroundColor Green
     } else {
         write-host "$UncRoot" -NoNewline -ForegroundColor Yellow
@@ -74,9 +105,9 @@ function prompt {
     write-host " $UncRoot"
     # Convert-Path needed for pure UNC-locations
     if (Test-Admin) {
-        write-host "#👾 ▶ $(Convert-Path $currentDirectory)`n" -nonewline -ForegroundColor Gray
+        write-host "#👾 ▶ $(Convert-Path $currentDirectory)`n" -nonewline -ForegroundColor DarkGray
     } else {
-        write-host "👽 ▶ $(Convert-Path $currentDirectory)`n" -nonewline -ForegroundColor Gray
+        write-host "👽 ▶ $(Convert-Path $currentDirectory)`n" -nonewline -ForegroundColor DarkGray
     }
     Write-Host "↪" -nonewline -ForegroundColor white
     return " "
