@@ -1,122 +1,123 @@
-﻿# Set the encoding to UTF-8 for the console output
+﻿# Set the encoding to UTF-8 for console output
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
-# Set the folder path
-$Env:HOME = "E:\Users\Francois.LT-Taur"
-$Env:DATA = "D:\"
-$GitBranch = ""
-# Import Terminal-Icons module
-Import-Module Terminal-Icons
+# Set optional environment shortcuts only when not already defined
+if (-not $env:HOME) { $env:HOME = 'E:\Users\Francois.LT-Taur' }
+if (-not $env:DATA) { $env:DATA = 'D:\' }
 
-# Verify if PowerShell is executed as an administrator
+# Import Terminal-Icons module if available
+if (Get-Module -ListAvailable -Name Terminal-Icons) {
+    Import-Module Terminal-Icons -ErrorAction SilentlyContinue
+}
+
 function Test-Admin {
     $identity = [System.Security.Principal.WindowsIdentity]::GetCurrent()
     $principal = New-Object System.Security.Principal.WindowsPrincipal($identity)
     return $principal.IsInRole([System.Security.Principal.WindowsBuiltInRole]::Administrator)
 }
 
-#Is a git repository if .git folder exists retune true or false
 function IsGitRepository {
     param (
-        [string]$path = $(Get-Location)
+        [string]$Path = (Get-Location).Path
     )
-    return Test-Path "$path\.git"
+
+    if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+        return $false
+    }
+
+    $gitResult = git -C $Path rev-parse --is-inside-work-tree 2>$null
+    return $gitResult -eq 'true'
 }
 
-#function get git branch name if exists
 function Get-GitBranchName {
     param (
-        [string]$path = $(Get-Location)
+        [string]$Path = (Get-Location).Path
     )
-    if (IsGitRepository) {
-        $gitBranch = & git -C $path rev-parse --abbrev-ref HEAD 2>$null
-        return $gitBranch
-    } else {
-        return $null
+
+    if (IsGitRepository -Path $Path) {
+        return git -C $Path rev-parse --abbrev-ref HEAD 2>$null
     }
+    return $null
 }
 
 function cd {
-    if ($args[0] -eq "~") {
-        Set-Location -Path "E:\Users\Francois.LT-Taur"
-    } else {
-        Set-Location $args
+    param (
+        [string]$Path = $null
+    )
+
+    if (-not $Path -or $Path -eq '~') {
+        Set-Location -Path $env:USERPROFILE
+        return
     }
+
+    if ($Path -eq 'D') {
+        Set-Location -Path 'D:\'
+        return
+    }
+
+    Set-Location -Path $Path
 }
 
-function cd {
-    if ($args[0] -eq "D") {
-        Set-Location -Path "D:\"
-    } else {
-        Set-Location $args
-    }
+$host.UI.RawUI.WindowTitle = "$env:USERNAME@$env:COMPUTERNAME"
+
+function Get-CurrentDirectorySegment {
+    param ([string]$Path)
+
+    if (-not $Path) { return '' }
+    $leaf = Split-Path -Leaf $Path
+    return if ($leaf) { $leaf } else { $Path }
 }
 
-# Default location
-# Set-Location -Path "D:\"
-
-$host.ui.rawui.WindowTitle = "${Env:username}@${Env:computername}"
-
-
-#Higlight name of current directory in the prompt
 function pathPrompt {
-    # Get current location
     $currentDirectory = (Get-Location).Path
+    $folderName = Get-CurrentDirectorySegment -Path $currentDirectory
 
-    # Use regex to extract parts of the path
-    $regex = "^([A-Z]):\\(.*\\)?([^\\]+)$"
-    $match = [regex]::Match($currentDirectory, $regex)
-
-    if ($match.Success) {
-        $driveLetter = $match.Groups[1].Value
-        $directoryPath = $match.Groups[2].Value
-        $folderName = $match.Groups[3].Value
-
-        # Print with colors
-        Write-Host "| 💾 $driveLetter " -ForegroundColor DarkBlue -NoNewline
-        # Write-Host "$directoryPath" -ForegroundColor DarkGreen -NoNewline
-        Write-Host "→ $folderName" -ForegroundColor DarkBlue -NoNewline
-    } else {
-        # If regex fails (e.g., root of drive), fallback formatting
-        Write-Host "$currentDirectory" -ForegroundColor Cyan
-    }
+    Write-Host "| 💾 $($currentDirectory.Substring(0,1)) " -ForegroundColor DarkBlue -NoNewline
+    Write-Host "→ $folderName" -ForegroundColor DarkBlue -NoNewline
 }
 
+function Get-LastCommandTime {
+    if ((Get-History).Count -gt 0) {
+        $lastEntry = (Get-History)[-1]
+        if ($lastEntry.StartExecutionTime -and $lastEntry.EndExecutionTime) {
+            return [math]::Round((($lastEntry.EndExecutionTime - $lastEntry.StartExecutionTime).TotalSeconds), 2)
+        }
+    }
+    return 0
+}
 
-# Get the current date and time
-$dateTime = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-
-# Custom prompt function
 function prompt {
-    
+    $currentDirectory = Get-Location
+    $uncRoot = $currentDirectory.Drive.DisplayRoot
+    $dateTime = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
 
-    $currentDirectory = $(Get-Location)
-    $UncRoot = $currentDirectory.Drive.DisplayRoot
+    Write-Host "📅 $dateTime | ⏱ $(Get-LastCommandTime)s " -NoNewline -ForegroundColor DarkGray
+    pathPrompt
 
-    write-host "📅 $dateTime " -NoNewline -ForegroundColor DarkGray
-    pathPrompt -NoNewline
-    if (IsGitRepository) {
-        $GitBranch = Get-GitBranchName
-        write-host "| 📁 git branch: *" -NoNewline -ForegroundColor White
-        write-host $GitBranch -NoNewline -ForegroundColor Green
+    if (IsGitRepository -Path $currentDirectory.Path) {
+        $gitBranch = Get-GitBranchName -Path $currentDirectory.Path
+        Write-Host "| 📁 git branch: *" -NoNewline -ForegroundColor White
+        Write-Host $gitBranch -NoNewline -ForegroundColor Green
     } else {
-        write-host "$UncRoot" -NoNewline -ForegroundColor Yellow
+        Write-Host "$uncRoot" -NoNewline -ForegroundColor Yellow
     }
-    write-host " $UncRoot"
-    # Convert-Path needed for pure UNC-locations
+
+    Write-Host " $uncRoot"
+
     if (Test-Admin) {
-        write-host "#👾 ▶ $(Convert-Path $currentDirectory)`n" -nonewline -ForegroundColor DarkGray
+        Write-Host "#👾 ▶ $(Convert-Path $currentDirectory)`n" -NoNewline -ForegroundColor DarkGray
     } else {
-        write-host "👽 ▶ $(Convert-Path $currentDirectory)`n" -nonewline -ForegroundColor DarkGray
+        Write-Host "👽 ▶ $(Convert-Path $currentDirectory)`n" -NoNewline -ForegroundColor DarkGray
     }
-    Write-Host "↪" -nonewline -ForegroundColor white
-    return " "
+
+    Write-Host "↪" -NoNewline -ForegroundColor White
+    return ' '
 }
 
-# Function to edit file with Notepad++
 function edit {
     param (
         [string]$filePath = $(Get-Location)
     )
-    & "C:\Program Files\Notepad++\notepad++.exe" $filePath
+
+    & 'C:\Program Files\Notepad++\notepad++.exe' $filePath
 }
